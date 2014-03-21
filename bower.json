@@ -1,0 +1,24 @@
+{
+  "name": "dip",
+  "main": "dip.js",
+  "version": "0.0.0",
+  "homepage": "https://github.com/kevinbgreene/dip",
+  "authors": [
+    "Kevin Greene <hightimesteddy@gmail.com>"
+  ],
+  "description": "simple minded dependency injection",
+  "moduleType": [
+    "globals"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "1.10"
+  }
+}

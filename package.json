@@ -1,0 +1,19 @@
+{
+  "name": "dip",
+  "version": "0.0.0",
+  "description": "A CSS lazy loader that takes a path and, if the file has not already been loaded, loads it and returns a promise. As is, it requires Q, but any promise library should work.",
+  "main": "dip.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kevinbgreene/dip.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kevinbgreene/dip/issues"
+  },
+  "homepage": "https://github.com/kevinbgreene/dip"
+}

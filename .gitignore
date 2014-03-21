@@ -1,0 +1,6 @@
+_notes.txt
+dev/js/vendor
+node_modules
+bower_components
+.DS_Store
+.sass-cache

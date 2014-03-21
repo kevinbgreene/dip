@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+	<meta charset="UTF-8">
+	<title>Dip Example</title>
+
+</head>
+
+<body>
+
+	<div class="kg-div"></div>
+
+	<script src="bower_components/jquery/jquery.min.js"></script>	
+	<script src="dip.js"></script>
+
+	<script>
+
+		/*
+		* create a dip instance for our application
+		*/
+
+		var dip = Dip();
+
+		dip.module('greet', ['myalert', function(myalert) {
+
+			return function(str) {
+
+				myalert('Hello! ' + str);
+			}
+		}]);
+
+		dip.module('myalert', function() {
+
+			return function(str) {
+				console.log(str);
+			}
+		});
+
+		dip.module('something', ['greet', 'myalert', function(greet, myalert) {
+
+			greet('Kevin');
+			myalert('boo ya');
+		}]);
+
+		dip.module('mybutton', function() {
+
+			function MyButton(element) {
+
+				$(element).css({
+					width: '400px',
+					height: '200px',
+					background: '#659'
+				});
+			}
+
+			return MyButton;
+		});
+
+		dip.view('kgDiv', ['greet', 'myWindow', 'mybutton', function(greet, myWindow, mybutton) {
+
+			myWindow.on('resize', function() {
+
+				console.log('resize');
+			});
+
+			return function(element) {
+
+				console.log(new mybutton(element));
+			}
+		}]);
+
+		dip.module('myWindow', function() {
+
+			return $(window);
+		});
+
+	</script>
+
+</body>
+
+</html>
