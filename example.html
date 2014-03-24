@@ -21,30 +21,45 @@
 		* create a dip instance for our application
 		*/
 
-		var dip = Dip();
+		var app = dip.app('example');
 
-		dip.module('greet', ['myalert', function(myalert) {
+		/*
+		* The module method registers a new module which can be 
+		* injected into any other function, including other modules
+		*/
+		app.module('greet', ['myalert', function(myalert) {
 
+			/*
+			* this return bit is what becomes your module.
+			* at compile time the wrapper function is executed.
+			*/
 			return function(str) {
 
 				myalert('Hello! ' + str);
 			}
 		}]);
 
-		dip.module('myalert', function() {
+		app.module('myalert', function() {
 
 			return function(str) {
 				console.log(str);
 			}
 		});
 
-		dip.module('something', ['greet', 'myalert', function(greet, myalert) {
+		/*
+		* The inject method injects dependencies into a function and executes that function
+		* immediately. If dependencies haven't been compiled yet the function with execute
+		* immediately after dependencies are compiled. The function is not registered for
+		* other modules to depend on.
+		*/
+		app.inject(['greet', 'myalert'], function(greet, myalert) {
 
 			greet('Kevin');
 			myalert('boo ya');
-		}]);
 
-		dip.module('mybutton', function() {
+		});
+
+		app.module('mybutton', function() {
 
 			function MyButton(element) {
 
@@ -58,20 +73,36 @@
 			return MyButton;
 		});
 
-		dip.view('kgDiv', ['greet', 'myWindow', 'mybutton', function(greet, myWindow, mybutton) {
+		/**
+		* The view method registers a new module as a view. It works much the same way as the module
+		* method, the only difference is at compile time the module name is converted to dash case and
+		* the document is searched for matching classes. If matching classes are found the return function
+		* is instantiated for each of the matching elements with the raw DOM node passed as a dependency.
+		*/
+		app.view('kgDiv', ['greet', 'myWindow', 'mybutton', function(greet, myWindow, mybutton) {
 
 			myWindow.on('resize', function() {
 
 				console.log('resize');
 			});
 
-			return function(element) {
-
-				console.log(new mybutton(element));
+			function View(element) {
+				this.element = element;
+				console.log(this.element);
+				console.log(this instanceof View);
 			}
+
+			View.prototype = {
+				constructor : View
+			};
+
+			return View
 		}]);
 
-		dip.module('myWindow', function() {
+		/**
+		* Dependencies can be defined in any order. All dependencies are resolved on DOMContentLoaded
+		*/
+		app.module('myWindow', function() {
 
 			return $(window);
 		});
