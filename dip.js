@@ -1,11 +1,18 @@
-(function(exports) {
+/**
+ * A simple dependency injector. A lot of the implementation is similar to Angular.
+ * Came from experimenting and learning how other dependency injectors do their
+ * business. 
+ *
+ * @module Dip
+ */
+ (function(global, $) {
 
 	'use strict';
 
 	var dip = {};
 	var apps = {};
 
-	exports.dip = dip;
+	global.dip = dip;
 
     function isUndefined(value) {
         return typeof value == 'undefined';
@@ -78,37 +85,88 @@
 		*/
 		var modules = {};
 		var views = {};
-		var queue = [];
+		var injectorQueue = [];
+		var runQueue = [];
+		var configQueue = [];
 
 		var isReady = false;
 
 		/*
-		* @description takes an array of dependencies and injects them into a function
-		* @param {array} arr - array of dependencies
-		* @param {function} fn - invocation function
+		* Takes an array of dependencies and injects them into a function
+		*
+		* @method inject	
+		* @param {Array} arr - array of dependencies
+		* @param {Function} [fn] - invocation function
 		*/
 		function inject(arr, fn) {
 
-			var mod = {
+			var mod;
+
+			if (isString(arr)) {
+				arr = [arr];
+			}
+
+			mod = {
 				deps : arr,
 				fn : fn
 			};
 
 			if (!isReady) {
-				queue.push(mod);
+				injectorQueue.push(mod);
 			}
 			else {
-				getDependencies(mod);
+				return getDependencies(mod);
 			}
 
-			return this;
+			return null;
+		}
+
+		/*
+		* Takes an array of dependencies and injects them into a function
+		*
+		* @method configQueue
+		* @param {Array} arr - array of dependencies
+		* @param {Function} [fn] - invocation function
+		*/
+		function _configQueue(arr, fn) {
+			
+			if (isReady) {
+				throw new Error('Items can only be added to the config queue before run is called');
+			}
+			else {
+				configQueue.push({
+					deps : arr,
+					fn : fn
+				});
+			}
+		}
+
+		/*
+		* Takes an array of dependencies and injects them into a function
+		*
+		* @method runQueue
+		* @param {Array} arr - array of dependencies
+		* @param {Function} [fn] - invocation function
+		*/
+		function _runQueue(arr, fn) {
+
+			if (isReady) {
+				throw new Error('Items can only be added to the run queue before run is called');
+			}
+			else {
+				runQueue.push({
+					deps : arr,
+					fn : fn
+				});
+			}
 		}
 
 		/*
 		* Registers the view.
+		*
 		* @method view
-		* @param {string} name - a name for the module
-		* @param {array | function} arr - an array of dependencies and the 
+		* @param {String} name - a name for the module
+		* @param {Array|Function} arr - an array of dependencies and the 
 		* invocation funciton or just the invocation function. Selectors 
 		* must be class names, creating by converting
 		* the module name to dash case
@@ -116,7 +174,7 @@
 		function view(name, arr) {
 
 			if (isUndefined(arr)) {
-				return views[name] || null;
+				throw new Error('A view needs both a name and a constructor');
 			}
 			else if (views[name]) {
 				throw new Error('A view with name ' + name + ' already exists');
@@ -130,9 +188,10 @@
 
 		/*
 		* Registers the module.
+		*
 		* @method module
-		* @param {string} name - a name for the module
-		* @param {array | function} arr - an array of dependencies and the 
+		* @param {String} name - a name for the module
+		* @param {Array|Function} arr - an array of dependencies and the 
 		* invocation funciton or just the invocation function.
 		*/
 		function module(name, arr) {
@@ -152,6 +211,7 @@
 
 		/*
 		* Registers the module.
+		*
 		* @method process
 		* @param {string} name - a name for the module
 		* @param {array | function} arr - an array of dependencies and the 
@@ -228,39 +288,150 @@
 			return null;
 		}
 
-		function run() {
+		function prepModules() {
 
 			var key = null;
 
 			for (key in modules) {
 				resolve(modules, key);
 			}
-
-			for (key in views) {
-				resolve(views, key);
-			}
-
-			queue.forEach(function(mod) {
-				getDependencies(mod);
-			});
-
-			isReady = true;
-			queue = [];
 		}
 
-		function compile(scope) {
+		function resolveViews() {
 
 			var key = null;
 
 			for (key in views) {
+				resolve(views, key);
+			}
+		}
 
-				$('.' + toDash(key)).each(function() {
-					new views[key].fn(this, scope);
+		function clearRunQueue() {
+
+			runQueue.forEach(function(mod) {
+				getDependencies(mod);
+			});
+		}
+
+		function clearConfigQueue() {
+
+			configQueue.forEach(function(mod) {
+				getDependencies(mod);
+			});
+		}
+
+		function clearInjectorQueue() {
+
+			injectorQueue.forEach(function(mod) {
+				getDependencies(mod);
+			});
+		}
+
+		/*
+		* Overrides the default run loop
+		* Builds modules and views without performing app config.
+		*
+		* @method override
+		*/
+		function override() {
+
+			var key = null;
+
+			prepModules();
+			resolveViews();
+
+			isReady = true;
+			injectorQueue = [];
+			runQueue = [];
+		}
+
+		function run() {
+
+			if (isReady) {
+				return;
+			}
+
+			var key = null;
+
+			prepModules();
+
+			clearConfigQueue();
+			clearRunQueue();
+
+			resolveViews();
+
+			clearInjectorQueue();
+
+			isReady = true;
+			injectorQueue = [];
+			runQueue = [];
+		}
+
+		function compile(ctx) {
+
+			var key = null;
+			var ctx = ctx || global.document;
+			var $ctx = $(ctx);
+			var search;
+
+			var compileViews = [];
+
+			if (!ctx) {
+				throw new Error('ERROR: compile must have an element to compile.');
+			}
+
+			for (key in views) {
+
+				search = toDash(key);
+
+				if ($ctx.hasClass(search)) {
+					compileViews.push({
+						fn : views[key].fn.bind(null, $ctx[0]),
+						attrs : $ctx.data()
+					});
+				}
+
+				$ctx.find('.' + search).each(function() {
+
+					compileViews.push({
+						fn : views[key].fn.bind(null, this),
+						attrs : $(this).data()
+					});
 				});
 
-				$('[' + toDash(key) + ']').each(function() {
-					new views[key].fn(this, scope);
+				if ($ctx.attr(search)) {
+					compileViews.push({
+						fn : views[key].fn.bind(null, $ctx[0]),
+						attrs : $ctx.data()
+					});
+				}
+
+				$ctx.find('[' + search + ']').each(function() {
+					compileViews.push({
+						fn : views[key].fn.bind(null, this),
+						attrs : $(this).data()
+					});
 				});
+			}
+
+			return function(scope) {
+
+				var i = 0;
+				var temp = scope || null;
+
+				for (i=0;i<compileViews.length;i++) {
+
+					if (!temp) {
+
+						inject('scope', function(appScope) {
+							temp = appScope;
+						});
+					}
+
+					new compileViews[i].fn(temp, compileViews[i].attrs);
+				}
+
+				return $ctx;
 			}
 		}
 
@@ -268,8 +439,11 @@
 			view : view,
 			module : module,
 			inject : inject,
-			run : run,
-			compile : compile
+			compile : compile,
+			config : _configQueue,
+			run : _runQueue,
+			override : override,
+			start : run
 		};
 	}
 
@@ -305,17 +479,18 @@
 		* Start your engines.
 		*/
 		$(function() {
-
-			injector.run();
-
-			injector.inject(['scope'], injector.compile);
-
+			injector.start();
+			injector.compile()();
 		});
 
 		return {
 			view : injector.view,
 			module : injector.module,
-			inject : injector.inject
+			inject : injector.inject,
+			compile : injector.compile,
+			run : injector.run,
+			config : injector.config,
+			override : injector.override
 		}
 	}
 
@@ -328,4 +503,4 @@
 		return apps[name];
 	};
 
-}(window));
+}(window, window.jQuery));
